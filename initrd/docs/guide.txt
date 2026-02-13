@@ -1,0 +1,3 @@
+myOS tarfs quick guide
+- use `ls` to list files
+- use `cat <file>` to print a file

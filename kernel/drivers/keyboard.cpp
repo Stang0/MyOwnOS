@@ -2,6 +2,72 @@
 #include "interrupts.hpp"
 #include "ports.hpp"
 #include "console.hpp"
+#include "../lib/helpers.hpp"
+#include "../fs/tarfs.hpp"
+
+// Simple command buffer
+char command_buffer[128];
+int buffer_index = 0;
+
+// Simple string comparison helper
+int strcmp(const char* s1, const char* s2) {
+    while (*s1 && (*s1 == *s2)) {
+        s1++;
+        s2++;
+    }
+    return *(const unsigned char*)s1 - *(const unsigned char*)s2;
+}
+
+bool is_space(char c) {
+    return c == ' ' || c == '\t';
+}
+
+void execute_command(char* input) {
+    while (is_space(*input)) input++;
+
+    if (*input == '\0') {
+        return;
+    }
+
+    char* cmd = input;
+    char* arg = input;
+    while (*arg && !is_space(*arg)) arg++;
+    if (*arg) {
+        *arg++ = '\0';
+        while (is_space(*arg)) arg++;
+    }
+
+    if (strcmp(cmd, "meminfo") == 0) {
+        if (*arg != '\0') {
+            kprint("meminfo: this command takes no arguments\n");
+            return;
+        }
+        meminfo_command();
+        return;
+    }
+
+    if (strcmp(cmd, "ls") == 0) {
+        if (*arg != '\0') {
+            kprint("ls: path arguments are not supported yet\n");
+            return;
+        }
+        tarfs_ls();
+        return;
+    }
+
+    if (strcmp(cmd, "cat") == 0) {
+        if (*arg == '\0') {
+            kprint("cat: missing file operand\n");
+            return;
+        }
+        tarfs_cat(arg);
+        return;
+    }
+
+    kprint("Unknown command: ");
+    kprint(cmd);
+    kprint("\n");
+}
 
 // Simple US QWERTY Scan Code Set 1 Map
 unsigned char kbdus[128] =
@@ -126,6 +192,23 @@ void keyboard_callback(Registers* regs) {
         }
         
         console.write_char(c); // print the character to the console
+        
+        // Command Handling
+        if (c == '\n') {
+            command_buffer[buffer_index] = '\0'; // Null-terminate
+            execute_command(command_buffer);
+            
+            kprint("> "); // Prompt
+            buffer_index = 0;
+        } else if (c == '\b') {
+            if (buffer_index > 0) {
+                buffer_index--;
+            }
+        } else {
+            if (buffer_index < 127) {
+                command_buffer[buffer_index++] = c;
+            }
+        }
     }
     
     (void)regs; // Unused

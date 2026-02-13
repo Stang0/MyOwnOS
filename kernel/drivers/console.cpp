@@ -1,5 +1,6 @@
 #include "console.hpp"
 #include "ports.hpp"
+#include "serial.hpp"
 
 Console console;
 
@@ -113,6 +114,52 @@ void Console::panic_screen(const char* msg) {
 
 void kprint(const char* str) {
     console.write_string(str);
+    Serial::write_string(str);
+}
+
+void kprint_hex(uint64_t n) {
+    kprint("0x");
+    const char* hex_chars = "0123456789ABCDEF";
+    bool leading_zeros = true;
+    
+    // 64-bit integer has 16 hex digits (64/4 = 16)
+    for (int i = 15; i >= 0; i--) {
+        uint8_t nibble = (n >> (i * 4)) & 0xF;
+        if (nibble != 0 || i == 0) {
+            leading_zeros = false;
+        }
+        if (!leading_zeros) {
+            console.write_char(hex_chars[nibble]);
+            Serial::write_char(hex_chars[nibble]);
+        }
+    }
+}
+
+void kprint_int(int64_t n) {
+    if (n == 0) {
+        console.write_char('0');
+        Serial::write_char('0');
+        return;
+    }
+
+    if (n < 0) {
+        console.write_char('-');
+        Serial::write_char('-');
+        n = -n;
+    }
+
+    char buffer[21]; // Max 64-bit int digits
+    int i = 0;
+    while (n > 0) {
+        buffer[i++] = (n % 10) + '0';
+        n /= 10;
+    }
+    
+    // Print in reverse
+    while (--i >= 0) {
+        console.write_char(buffer[i]);
+        Serial::write_char(buffer[i]);
+    }
 }
 
 void klog(const char* msg) {

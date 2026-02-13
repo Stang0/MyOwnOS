@@ -1,0 +1,2 @@
+Hello from tarfs.
+This file is packed into initrd.tar and loaded at boot.
